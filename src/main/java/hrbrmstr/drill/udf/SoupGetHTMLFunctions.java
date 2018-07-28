@@ -5,13 +5,12 @@ import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.Output;
 import org.apache.drill.exec.expr.annotations.Param;
-import org.apache.drill.exec.expr.holders.NullableVarCharHolder;
-import org.apache.drill.exec.vector.complex.writer.BaseWriter;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
 import org.apache.drill.exec.expr.holders.IntHolder;
-import org.jsoup.HttpStatusException;
-import org.jsoup.Jsoup;
-import java.net.MalformedURLException;
+
+//import org.jsoup.HttpStatusException;
+//import org.jsoup.Jsoup;
+//import java.net.MalformedURLException;
 
 import javax.inject.Inject;
 
@@ -32,8 +31,8 @@ public class SoupGetHTMLFunctions {
   )
   public static class SoupGetHTMLTimeout implements DrillSimpleFunc {
     
-    @Param NullableVarCharHolder input;
-    @Param IntHolder timeout;
+    @Param VarCharHolder input;
+    @Param(constant = true) IntHolder timeout;
     @Output VarCharHolder out;
 
     @Inject DrillBuf buffer;
@@ -46,9 +45,9 @@ public class SoupGetHTMLFunctions {
           input.start, input.end, input.buffer
       );
 
-      byte[] outBytes = null;
-
       try {
+
+        if (url_string.indexOf("http") != 0) url_string = "http://" + url_string;
 
         org.jsoup.Connection con = org.jsoup.Jsoup.connect(url_string);
 
@@ -60,29 +59,30 @@ public class SoupGetHTMLFunctions {
         org.jsoup.Connection.Response res = con.execute();
         org.jsoup.nodes.Document doc = res.parse();
 
-        outBytes = doc.outerHtml().getBytes();
-  
-      } catch(java.net.MalformedURLException e ) { // handle malformed URLs gracefully
-        outBytes = ("SOUP_ERROR: " + e.getMessage()).getBytes();
-      } catch(org.jsoup.HttpStatusException e) { // response was not OK
-        outBytes = ("SOUP_ERROR: " + e.getMessage()).getBytes();
-      } catch(org.jsoup.UnsupportedMimeTypeException e) { // unsupported MIME type
-        outBytes = ("SOUP_ERROR: " + e.getMessage()).getBytes();
-      } catch(java.net.SocketTimeoutException e) { // connection timeout
-        outBytes = ("SOUP_ERROR: " + e.getMessage()).getBytes();
-      } catch(java.io.IOException  e) { // general connection or read errors
-        outBytes = ("SOUP_ERROR: " + e.getMessage()).getBytes();
-      }
+        String outHtml = doc.outerHtml();
+        
+        if (outHtml == null) outHtml = "";
 
-      out.start = 0;
-      out.end = (outBytes == null) ? 0 : outBytes.length;
-      out.buffer = buffer = buffer.reallocIfNeeded(out.end );
-      out.buffer.setBytes(0, outBytes, 0, out.end);
+        byte[] outBytes = outHtml.getBytes();
+
+        out.start = 0;
+        out.end = outBytes.length;
+        out.buffer = buffer = buffer.reallocIfNeeded(out.end );
+        out.buffer.setBytes(0, outBytes, 0, out.end);
+    
+      } catch(Exception e) {
+
+        byte[] errBytes = null;
+        out.start = 0;
+        out.end = (errBytes == null) ? 0 : errBytes.length;
+        out.buffer = buffer = buffer.reallocIfNeeded(out.end );
+        out.buffer.setBytes(0, errBytes, 0, out.end);
+
+      }
 
     }
     
   }
-
   
   @FunctionTemplate(
     names = { "soup_html_to_plaintext" },
@@ -91,7 +91,7 @@ public class SoupGetHTMLFunctions {
   )
   public static class SoupHTMLToPlainText implements DrillSimpleFunc {
     
-    @Param NullableVarCharHolder input;
+    @Param VarCharHolder input;
     @Output VarCharHolder out;
 
     @Inject DrillBuf buffer;
@@ -101,32 +101,30 @@ public class SoupGetHTMLFunctions {
     public void eval() {
 
       String content = org.apache.drill.exec.expr.fn.impl.StringFunctionHelpers.toStringFromUTF8(
-          input.start, input.end, input.buffer
+        input.start, input.end, input.buffer
       );
 
-      byte[] outBytes = null;
-
       try {
-        if (content != null) {
-          org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(content);
-          if (doc != null) {
-            String txt = doc.text();
-            if (txt != null) outBytes = txt.getBytes();
-          }
-        }
-  
-      } catch(java.lang.Exception  e) { // general connection or read errors
-        outBytes = ("SOUP_ERROR: " + e.getMessage()).getBytes();
-      }
 
-      out.start = 0;
-      out.end = (outBytes == null) ? 0 : outBytes.length;
-      out.buffer = buffer = buffer.reallocIfNeeded(out.end );
-      out.buffer.setBytes(0, outBytes, 0, out.end);
+        String txt = null;
+
+        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(content);
+
+        if (doc != null) txt = doc.text();
+        if (txt == null) txt = "";
+
+        byte[] outBytes = txt.getBytes();
+
+        out.start = 0;
+        out.end = outBytes.length;
+        out.buffer = buffer = buffer.reallocIfNeeded(out.end);
+        out.buffer.setBytes(0, outBytes, 0, out.end);
+    
+      } catch(java.lang.Exception  e) {
+      }
 
     }
     
   }
-
 
 }

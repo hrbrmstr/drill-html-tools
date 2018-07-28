@@ -5,15 +5,13 @@ import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.Output;
 import org.apache.drill.exec.expr.annotations.Param;
-import org.apache.drill.exec.expr.holders.NullableVarCharHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
-import org.apache.drill.exec.expr.holders.BitHolder;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter;
-import org.jsoup.Jsoup;
-import org.jsoup.helper.Validate;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+// import org.jsoup.Jsoup;
+// import org.jsoup.helper.Validate;
+// import org.jsoup.nodes.Document;
+// import org.jsoup.nodes.Element;
+// import org.jsoup.select.Elements;
 
 import javax.inject.Inject;
 
@@ -34,7 +32,7 @@ public class SoupSelectAttributesFunctions {
   )
   public static class SoupSelectAttr implements DrillSimpleFunc {
     
-    @Param NullableVarCharHolder input;
+    @Param VarCharHolder input;
     @Param(constant = true) VarCharHolder nodeField;
     @Param(constant = true) VarCharHolder attrField;
     
@@ -64,26 +62,25 @@ public class SoupSelectAttributesFunctions {
       
       try {
         
-        if (htmlInput != null) {
-          org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(htmlInput);
-          if (doc != null) {
-            org.jsoup.select.Elements els = doc.select(nodeValue);
-            if (els != null) {
-              for (org.jsoup.nodes.Element el : els) {
-                org.jsoup.nodes.Attributes attrs = el.attributes();
-                if (attrs != null) {
-                  String attr = attrs.getIgnoreCase(attrValue);
-                  if (!((attr == null) || attr == "")) {
-                    byte[] outBytes = attr.getBytes();
-                    buffer.reallocIfNeeded((outBytes.length > 0) ? outBytes.length : 0); 
-                    buffer.setBytes(0, outBytes);
-                    lw.varChar().writeVarChar(0, (outBytes.length > 0) ? outBytes.length : 0, buffer); 
-                  }
+        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(htmlInput);
+        if (doc != null) {
+          org.jsoup.select.Elements els = doc.select(nodeValue);
+          if (els != null) {
+            for (org.jsoup.nodes.Element el : els) {
+              org.jsoup.nodes.Attributes attrs = el.attributes();
+              if (attrs != null) {
+                String attr = attrs.getIgnoreCase(attrValue);
+                if (!((attr == null) || attr == "")) {
+                  byte[] outBytes = attr.getBytes();
+                  buffer.reallocIfNeeded((outBytes.length > 0) ? outBytes.length : 0); 
+                  buffer.setBytes(0, outBytes);
+                  lw.varChar().writeVarChar(0, (outBytes.length > 0) ? outBytes.length : 0, buffer); 
                 }
               }
             }
           }
         }
+
       } catch(java.lang.Exception e) {
       }
       

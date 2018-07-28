@@ -5,15 +5,14 @@ import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.Output;
 import org.apache.drill.exec.expr.annotations.Param;
-import org.apache.drill.exec.expr.holders.NullableVarCharHolder;
 import org.apache.drill.exec.expr.holders.VarCharHolder;
 import org.apache.drill.exec.expr.holders.BitHolder;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter;
-import org.jsoup.Jsoup;
-import org.jsoup.helper.Validate;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+// import org.jsoup.Jsoup;
+// import org.jsoup.helper.Validate;
+// import org.jsoup.nodes.Document;
+// import org.jsoup.nodes.Element;
+// import org.jsoup.select.Elements;
 
 import javax.inject.Inject;
 
@@ -34,7 +33,7 @@ public class SoupSelectTextFunctions {
   )
   public static class SoupSelectText implements DrillSimpleFunc {
     
-    @Param NullableVarCharHolder input;
+    @Param VarCharHolder input;
     @Param(constant = true) VarCharHolder field;
     @Param(constant = true) BitHolder include_children;
     
@@ -57,42 +56,27 @@ public class SoupSelectTextFunctions {
       );
       
       mw.startList();
-      
-      if (html_string != null) {
+       
+      org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(html_string);
         
-        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(html_string);
+      if (doc != null) {
         
-        if (doc != null) {
-          
-          org.jsoup.select.Elements els = doc.select(fieldValue);
-          
-          if (els != null) {
-            
-            for (org.jsoup.nodes.Element el : els) {
-              
-              if (el != null) {
-                
-                String el_txt = (include_children.value == 1) ? el.text() : el.ownText();
-                
-                if (el_txt != null) {
-                  
-                  byte[] outBytes = el_txt.getBytes();
-                  
-                  buffer.reallocIfNeeded((outBytes.length) > 0 ? outBytes.length : 0); 
-                  buffer.setBytes(0, outBytes);
-                  
-                  mw.varChar().writeVarChar(0, (outBytes.length > 0) ? outBytes.length : 0, buffer); 
-                  
-                }
-                
+        org.jsoup.select.Elements els = doc.select(fieldValue);
+        
+        if (els != null) {
+          for (org.jsoup.nodes.Element el : els) {
+            if (el != null) {
+              String el_txt = (include_children.value == 1) ? el.text() : el.ownText();
+              if (el_txt != null) {
+                byte[] outBytes = el_txt.getBytes();
+                buffer.reallocIfNeeded(outBytes.length ); 
+                buffer.setBytes(0, outBytes);
+                mw.varChar().writeVarChar(0, outBytes.length, buffer); 
               }
-              
             }
-            
           }
-          
         }
-        
+          
       }
       
       mw.endList();
@@ -110,7 +94,7 @@ public class SoupSelectTextFunctions {
   )
   public static class SoupSelectTextInclude implements DrillSimpleFunc {
     
-    @Param NullableVarCharHolder input;
+    @Param VarCharHolder input;
     @Param(constant = true) VarCharHolder field;
     
     @Output BaseWriter.ComplexWriter out;
@@ -137,24 +121,15 @@ public class SoupSelectTextFunctions {
       
       if (doc != null) {
         org.jsoup.select.Elements els = doc.select(fieldValue);
-        
         if (els != null) {
-          
           for (org.jsoup.nodes.Element el : els) {
-            
             if (el != null) {
-              
               String el_text = el.text();
-              
               if (el_text != null) {
-                
                 byte[] outBytes = el_text.getBytes() ;
-                
-                buffer.reallocIfNeeded((outBytes.length > 0) ? outBytes.length : 0); 
+                buffer.reallocIfNeeded(outBytes.length); 
                 buffer.setBytes(0, outBytes);
-                
-                lw.varChar().writeVarChar(0, (outBytes.length > 0) ? outBytes.length : 0, buffer); 
-                
+                lw.varChar().writeVarChar(0, outBytes.length, buffer); 
               }
             }
           }
